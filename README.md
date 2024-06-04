@@ -1,6 +1,6 @@
-# Treinamento na Mestra Informática
+# Treinamento Mestra Informática
 
-Bem-vindo ao repositório de treinamento na Mestra Informática. Este repositório contém materiais, exemplos de código e exercícios para o programa de treinamento.
+Bem-vindo ao repositório de treinamento na Mestra Informática. Este repositório contém exercícios desenvolvidos no programa de treinamento e os materiais utilizados.
 
 ## Estrutura do Repositório
 
