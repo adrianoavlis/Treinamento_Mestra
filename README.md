@@ -31,6 +31,6 @@ Se você tiver alguma dúvida ou encontrar problemas, abra uma issue no reposit�
 
 ---
 
-**Instrutores**: [Nome do Instrutor 1](mailto:email1@example.com), [Nome do Instrutor 2](mailto:email2@example.com)
+**Instrutores**: [Bruna Borges](mailto:email1@example.com), [Dennys Willian](mailto:email2@example.com)
 
 **Organização**: Mestra Informática
