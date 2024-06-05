@@ -13,7 +13,7 @@ Bem-vindo ao repositório de treinamento na Mestra Informática. Este repositór
 
 1. **Clone o Repositório**: Para obter uma cópia local do repositório, use o comando:
     ```sh
-    git clone https://github.com/usuario/treinamento-mestra-informatica.git
+    git clone https://github.com/adrianoavlis/treinamento-mestra-informatica.git
     ```
 
 2. **Navegue pelo Conteúdo**: Explore as pastas e arquivos para encontrar o material de interesse.
