@@ -102,6 +102,7 @@ COMMIT
 GO
 
 
+
 -----------------------------------------------------------------------------------------------------
 
 -- 3 – Após popular as 2 tabelas vocês deverá realizar algumas alterações: 
@@ -157,7 +158,7 @@ GO
 -- Participante, a Inscrição, o Número de Matrícula, a patrocinadora do participante que tenha
 -- o maior salário. 
 
-SELECT TOP(1) p.IDPAR, p.NRISC, p.NRMAT, p.CDPAT
+SELECT TOP(1) p.IDPAR, P.NMPAR, p.NRISC, p.NRMAT, p.CDPAT
 FROM PAR_PARTICIPANTES_HOJE p
 JOIN PAR_PARTICIPANTES_SALARIOS s ON p.IDPAR = s.IDPAR
 ORDER BY s.VRSPA DESC
