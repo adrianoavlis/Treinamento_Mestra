@@ -1,36 +1,10 @@
 -- Sistema Previdenciário
 
-SELECT TABLE_NAME
-FROM [sysprevnucleos_hom].INFORMATION_SCHEMA.TABLES
-WHERE TABLE_TYPE = 'BASE TABLE'
-ORDER BY TABLE_NAME
-GO
 
 
 -- b) Listar apenas os participantes ATIVOS no plano, ordenado pela patrocinadora e nome 
 -- do  participante. Campos: Código e Descrição da Patroc, Matricula, Inscrição e Nome do 
 -- Participante).
-
-SELECT 
-		IDPAR, 
-		DCPAT, 
-		NRMAT, 
-		NRISC, 
-		NMPAR
-FROM	
-		PAR_PARPLA PPLA
-JOIN
-		PAR_PARTICIPANTES P
-ON 
-		P.IDPAR=PPLA.ID.PAR
-WHERE
-		PPLA
-
-GO
-
-SP_HELP PAR_PARPLA
-	
-
 
 
 
