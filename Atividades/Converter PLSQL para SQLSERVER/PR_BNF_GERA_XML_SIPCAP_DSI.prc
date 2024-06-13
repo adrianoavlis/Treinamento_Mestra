@@ -1,0 +1,336 @@
+CREATE OR REPLACE PROCEDURE PR_BNF_GERA_XML_SIPCAP_DSI
+(  PSCDUSU        VARCHAR2,
+   PNNRANO        SMALLINT,
+   PNNRSEM        SMALLINT,
+   PRSDCERR       OUT VARCHAR2
+)
+
+AS
+
+SCDLAN            CHAR(05);
+SCDLANBNF         CHAR(05);
+SCDLANBNFANT      CHAR(05);
+SDTMESCPT         CHAR(06);
+SNRPLA            CHAR(02);
+SNRCNB            CHAR(10);
+
+NCDETD            INTEGER;
+
+NIDAUX            SMALLINT;
+NQTSEXMAS         SMALLINT;
+NQTSEXFEM         SMALLINT;
+NSQREG            SMALLINT;
+NTPARQ            SMALLINT;
+
+SDCEML001         VARCHAR2(100);
+SDCEML002         VARCHAR2(100);
+SDCEML003         VARCHAR2(100);
+SDCERR            VARCHAR2(100);
+STXARQ            VARCHAR2(15);
+STXREG            VARCHAR2(300);
+
+
+CURSOR C_PLANOS
+IS
+SELECT 1, '99', NULL
+FROM   DUAL
+UNION
+SELECT 2, NRPLA, NRCNB
+FROM   PAR_PLANOS
+WHERE  CDTIPPLA IN ('1','2')
+ORDER BY 1, 2, 3;
+
+
+CURSOR C_POPULACAO
+IS
+SELECT A.CDLAN, B.TXARQXML, B.CDLANBNF, SUM(A.QTSEXMAS), SUM(A.QTSEXFEM)
+FROM   BNF_HISIPCAP_PLANO A,
+       BNF_SIPCAP_CDLAN   B
+WHERE  A.DTMESREF         = SDTMESCPT
+--WHERE  A.DTMESREF         = '202201'
+AND    A.NRPLA            = SNRPLA
+AND    B.DTINIVIG         = ( SELECT MAX(DTINIVIG)
+                              FROM   BNF_SIPCAP_CDLAN
+                              WHERE  TO_CHAR( DTINIVIG, 'RRRRMM' ) <= SDTMESCPT )
+AND    B.CDLAN            = A.CDLAN                       
+AND    B.CDGRU            = 4  
+GROUP BY A.CDLAN, B.TXARQXML, B.CDLANBNF                                                   
+ORDER BY A.CDLAN;
+
+
+FUNCTION FN_GRAVA_ARQUIVO(
+  PNNRANO       integer,
+  PNNRSEM       integer,
+  PNTPARQ       integer,
+  PNSQREG       in out integer,
+  PSTXREG       varchar2,
+  PSCDUSU       varchar2
+)
+
+  RETURN varchar2
+AS
+
+  sdcerr    varchar2(255);
+
+BEGIN
+
+  if PNSQREG is null then
+    PNSQREG := 1;
+  end if;
+
+  sdcerr := 'Erro ao incluir registro ' || to_char(PNSQREG);
+
+  insert into BNF_ARQ_SICADI
+  (   NRANO,    NRSEM,    TPARQ,      SQREG,    TXREG,    AUUSUULTALT,  AUDATULTALT,    AUVERREGATL  )
+  values
+  (   PNNRANO,  PNNRSEM,  PNTPARQ,    PNSQREG,  PSTXREG,  PSCDUSU,      SYSDATE,        1);
+
+
+  PNSQREG := PNSQREG + 1;
+
+  Return 'OK';
+  
+  /***** Tratamento de erros. *****/
+  EXCEPTION
+    WHEN OTHERS THEN
+         Return sdcerr;  
+
+END FN_GRAVA_ARQUIVO;
+
+
+BEGIN
+  
+NTPARQ := 2;
+
+IF PNNRSEM = 1 THEN
+  SDTMESCPT := TO_CHAR(PNNRANO) || '06';
+ELSE
+  SDTMESCPT := TO_CHAR(PNNRANO) || '12';
+END IF;
+
+
+SELECT MAX(DTMESREF)
+INTO   SDTMESCPT
+FROM   BNF_HISIPCAP_PLANO
+WHERE  TO_NUMBER(SUBSTR(DTMESREF,1,4)) = PNNRANO
+AND    DTMESREF                        <= SDTMESCPT;     
+
+
+DELETE
+FROM   BNF_ARQ_SICADI
+WHERE  NRANO   = PNNRANO
+AND    NRSEM   = PNNRSEM
+AND    TPARQ   = NTPARQ; 
+
+
+NSQREG := NULL;
+
+STXREG := '<?xml version="1.0" encoding="UTF-8"?>';
+
+SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+IF SDCERR <> 'OK' THEN
+  PRSDCERR := SDCERR;
+END IF;
+
+
+STXREG := '<balancete-sexo-idade xmlns="http://sexoidadeporplano.xml.modelo.comum.estatistico.dataprev.gov.br" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://sexoidadeporplano.xml.modelo.comum.estatistico.dat aprev.gov.br dadosSexoIdadePorPlano.xsd ">';
+
+SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+IF SDCERR <> 'OK' THEN
+  PRSDCERR := SDCERR;
+END IF;
+
+
+STXREG := '  <entidade>' || TO_CHAR(NCDETD) || '</entidade>';
+
+SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+IF SDCERR <> 'OK' THEN
+  PRSDCERR := SDCERR;
+END IF;
+
+
+STXREG := '  <competencia>' || SDTMESCPT || '</competencia>';
+
+SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+IF SDCERR <> 'OK' THEN
+  PRSDCERR := SDCERR;
+END IF;
+
+
+STXREG := '  <email>' || TRIM(SDCEML001) || '</email>';
+
+SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+IF SDCERR <> 'OK' THEN
+  PRSDCERR := SDCERR;
+END IF;
+
+IF SDCEML002 IS NOT NULL THEN
+  STXREG := '  <email>' || TRIM(SDCEML002) || '</email>';
+
+  SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+  IF SDCERR <> 'OK' THEN
+    PRSDCERR := SDCERR;
+  END IF;
+END IF;
+
+IF SDCEML003 IS NOT NULL THEN
+  STXREG := '  <email>' || TRIM(SDCEML003) || '</email>';
+
+  SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+  IF SDCERR <> 'OK' THEN
+    PRSDCERR := SDCERR;
+  END IF;
+END IF;
+
+OPEN C_PLANOS;
+  
+FETCH C_PLANOS
+INTO  NIDAUX, SNRPLA, SNRCNB;
+  
+WHILE C_PLANOS%FOUND
+LOOP
+  
+  IF SNRPLA = '99' THEN
+    STXREG := '  <consolidado>';   
+  ELSE
+    STXREG := '  <plano-beneficio cnpb="' || TRIM(SNRCNB) || '">' ;   
+  END IF;
+
+  SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+  IF SDCERR <> 'OK' THEN
+    PRSDCERR := SDCERR;
+  END IF;
+
+    
+  SCDLANBNFANT := NULL;
+  
+  OPEN C_POPULACAO;
+    
+  FETCH C_POPULACAO
+  INTO  SCDLAN, STXARQ, SCDLANBNF, NQTSEXMAS, NQTSEXFEM;
+    
+  WHILE C_POPULACAO%FOUND
+  LOOP  
+  
+    IF (SCDLANBNF <> SCDLANBNFANT) or (SCDLANBNFANT IS NULL) THEN
+    
+      IF SCDLANBNFANT IS NOT NULL THEN  
+    
+        STXREG := '    </populacao-beneficio>';
+
+        SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+        IF SDCERR <> 'OK' THEN
+          PRSDCERR := SDCERR;
+        END IF;
+        
+      END IF;
+      
+    
+      STXREG := '    <populacao-beneficio codigo-beneficio="' || SCDLANBNF || '">';
+
+      SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+      IF SDCERR <> 'OK' THEN
+        PRSDCERR := SDCERR;
+      END IF;
+      
+      SCDLANBNFANT := SCDLANBNF;
+
+    END IF;
+  
+       
+    STXREG := '      <faixa-etaria tipo="' || STXARQ || '">';
+
+    SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+    IF SDCERR <> 'OK' THEN
+      PRSDCERR := SDCERR;
+    END IF;
+
+
+    STXREG := '        <masculino>' || TO_CHAR(NQTSEXMAS) || '</masculino>';
+
+    SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+    IF SDCERR <> 'OK' THEN
+      PRSDCERR := SDCERR;
+    END IF;
+
+
+    STXREG := '        <feminino>' || TO_CHAR(NQTSEXFEM) || '</feminino>';
+
+    SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+    IF SDCERR <> 'OK' THEN
+      PRSDCERR := SDCERR;
+    END IF;
+
+
+    STXREG := '      </faixa-etaria>';
+
+    SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+    IF SDCERR <> 'OK' THEN
+      PRSDCERR := SDCERR;
+    END IF;
+      
+    FETCH C_POPULACAO
+    INTO  SCDLAN, STXARQ, SCDLANBNF, NQTSEXMAS, NQTSEXFEM;
+        
+  END LOOP;
+  CLOSE C_POPULACAO;
+    
+  
+  IF SCDLANBNFANT IS NOT NULL THEN
+    STXREG := '    </populacao-beneficio>';
+
+    SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+    IF SDCERR <> 'OK' THEN
+      PRSDCERR := SDCERR;
+    END IF;
+  END IF;
+
+  
+  IF SNRPLA = '99' THEN
+    STXREG := '  </consolidado>';     
+  ELSE
+    STXREG := '  </plano-beneficio>';    
+  END IF;
+
+  SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+  IF SDCERR <> 'OK' THEN
+    PRSDCERR := SDCERR;
+  END IF;
+    
+  
+  FETCH C_PLANOS
+  INTO  NIDAUX, SNRPLA, SNRCNB;
+      
+END LOOP;
+CLOSE C_PLANOS;
+  
+  
+STXREG := '</balancete-sexo-idade>';
+
+SDCERR := FN_GRAVA_ARQUIVO( PNNRANO, PNNRSEM, NTPARQ, NSQREG, STXREG, PSCDUSU );
+
+IF SDCERR <> 'OK' THEN
+  PRSDCERR := SDCERR;
+END IF;
+   
+
+PRSDCERR := 'OK';
+
+END PR_BNF_GERA_XML_SIPCAP_DSI;
+/
